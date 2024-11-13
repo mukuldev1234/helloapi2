@@ -1,0 +1,37 @@
+name: Deploy to Windows VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Deploy to Windows Server via SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          echo "${SSH_KEY}" > ssh_key
+          chmod 600 ssh_key
+          
+          # Copy the project files to the Windows server
+          scp -o StrictHostKeyChecking=no -i ssh_key -r . "${SSH_USER}@${SSH_HOST}:~/simple-api"
+
+          # Execute commands on Windows server to install dependencies and start the app
+          ssh -o StrictHostKeyChecking=no -i ssh_key "${SSH_USER}@${SSH_HOST}" << 'EOF'
+            cd C:/path/to/deployed/simple-api
+            npm install
+            # Start the server on port 80 using PowerShell
+            powershell -Command "Start-Process -NoNewWindow -FilePath node -ArgumentList 'index.js'"
+EOF
